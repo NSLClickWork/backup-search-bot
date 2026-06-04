@@ -158,10 +158,14 @@ class DataLayer {
 
     try {
       const escapedQuery = queryText.replace(/'/g, "\\'");
+      const lowerQuery = escapedQuery.toLowerCase();
+      const upperQuery = escapedQuery.toUpperCase();
+      const capQuery = escapedQuery.charAt(0).toUpperCase() + escapedQuery.slice(1).toLowerCase();
+
       const response = await this.googleDrive.files.list({
-        q: `name contains '${escapedQuery}' and trashed = false`,
+        q: `(name contains '${escapedQuery}' or name contains '${lowerQuery}' or name contains '${upperQuery}' or name contains '${capQuery}' or fullText contains '${escapedQuery}') and trashed = false`,
         fields: 'files(id, name, mimeType, webViewLink, modifiedTime, description)',
-        pageSize: 10
+        pageSize: 15
       });
 
       return (response.data.files || []).map(file => ({
@@ -170,7 +174,8 @@ class DataLayer {
         path: `ID: ${file.id}`,
         webUrl: file.webViewLink || '',
         lastModified: file.modifiedTime || new Date().toISOString(),
-        snippet: file.description || `File inside Google Drive (${file.mimeType})`
+        snippet: (file.mimeType === 'application/vnd.google-apps.folder' ? '📂 [FOLDER] ' : '📄 [FILE] ') + 
+                 (file.description || `File inside Google Drive`)
       }));
     } catch (err) {
       console.error('[DataLayer] Google Drive search failed, falling back to mock results:', err.message);
@@ -205,44 +210,45 @@ class DataLayer {
     }
 
     try {
-      let siteId = process.env.MS_SHAREPOINT_SITE_ID;
-      if (!siteId || siteId === 'placeholder_sharepoint_site_id') {
-        try {
-          const siteResponse = await axios.get('https://graph.microsoft.com/v1.0/sites/root', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          siteId = siteResponse.data.id;
-          console.log(`[DataLayer] Resolved Microsoft SharePoint root site ID: ${siteId}`);
-        } catch (siteErr) {
-          console.error('[DataLayer] Failed to resolve root SharePoint site ID:', siteErr.message);
-        }
-      }
+      // Use Microsoft Graph Search API to scan ALL documents across the tenant
+      const url = 'https://graph.microsoft.com/v1.0/search/query';
+      const body = {
+        requests: [
+          {
+            entityTypes: ['driveItem'],
+            query: {
+              queryString: queryText
+            },
+            region: 'DEU' // The tenant's region is DEU
+          }
+        ]
+      };
 
-      let url = '';
-      if (siteId) {
-        url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/search(q='${encodeURIComponent(queryText)}')`;
-      } else {
-        url = `https://graph.microsoft.com/v1.0/me/drive/root/search(q='${encodeURIComponent(queryText)}')`;
-      }
-
-      const response = await axios.get(url, {
+      const response = await axios.post(url, body, {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      return (response.data.value || []).map(item => ({
-        name: item.name,
-        source: 'SharePoint',
-        path: item.parentReference?.path || '/root',
-        webUrl: item.webUrl || '',
-        lastModified: item.lastModifiedDateTime || new Date().toISOString(),
-        snippet: item.searchResult?.onClickTelemetryUrl
-          ? `Found in SharePoint folder: ${item.parentReference?.path || 'Root'}`
-          : 'File inside OneDrive/SharePoint site'
-      }));
+      const hits = response.data?.value?.[0]?.hitsContainers?.[0]?.hits || [];
+      return hits.map(hit => {
+        const resource = hit.resource;
+        const isFolder = !!resource.folder;
+        // Clean up the snippet if it contains HTML from Microsoft Graph
+        let cleanSnippet = hit.summary ? hit.summary.replace(/<[^>]*>?/gm, '') : 'Found in Microsoft 365';
+        
+        return {
+          name: resource.name || 'Unknown',
+          source: 'SharePoint',
+          path: resource.parentReference?.path || '/root',
+          webUrl: resource.webUrl || '',
+          lastModified: resource.lastModifiedDateTime || new Date().toISOString(),
+          snippet: (isFolder ? '📂 [FOLDER] ' : '📄 [FILE] ') + cleanSnippet
+        };
+      });
     } catch (err) {
-      console.error('[DataLayer] Microsoft Graph search failed, falling back to mock results:', err.message);
+      console.error('[DataLayer] Microsoft Graph search failed, falling back to mock results:', err.response?.data || err.message);
       return MOCK_FILES.filter(
         file => file.source === 'SharePoint' &&
         (file.name.toLowerCase().includes(queryText.toLowerCase()) ||
