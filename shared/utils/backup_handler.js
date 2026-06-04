@@ -3,6 +3,7 @@ import path from 'path';
 import archiver from 'archiver';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { dataLayer } from '../data/data_layer.js';
 
 dotenv.config();
 
@@ -120,8 +121,27 @@ class BackupHandler {
           sizeMb: parseFloat(sizeMb),
           durationSeconds: parseFloat(durationSec),
           timestamp: startTime.toISOString(),
-          error: null
+          error: null,
+          downloadUrl: null
         };
+
+        const folderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
+        if (folderId && folderId !== 'placeholder_folder_id') {
+          try {
+            console.log(`[BackupHandler] Uploading zip to Google Drive...`);
+            const driveUrl = await dataLayer.uploadBackupToDrive(zipPath, folderId);
+            backupRecord.downloadUrl = driveUrl;
+            
+            // Delete local zip to save space
+            if (fs.existsSync(zipPath)) {
+              fs.unlinkSync(zipPath);
+              console.log(`[BackupHandler] Deleted local zip file to save space: ${zipPath}`);
+            }
+          } catch (uploadErr) {
+            console.error('[BackupHandler] Failed to upload to Google Drive:', uploadErr.message);
+            backupRecord.error = `Local backup success, but Drive upload failed: ${uploadErr.message}`;
+          }
+        }
 
         await this.saveHistory(backupRecord);
         resolve(backupRecord);

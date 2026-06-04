@@ -80,7 +80,7 @@ export const backupBot = {
         { 
           name: '💾 Latest Backup Run', 
           value: latestBackup 
-            ? `• **File:** \`${latestBackup.fileName}\`\n• **Status:** ${latestBackup.success ? '✅ SUCCESS' : '❌ FAILED'}\n• **Size:** ${latestBackup.sizeMb} MB\n• **Time:** <t:${Math.floor(new Date(latestBackup.timestamp).getTime() / 1000)}:R>`
+            ? `• **File:** \`${latestBackup.fileName}\`\n• **Status:** ${latestBackup.success ? '✅ SUCCESS' : '❌ FAILED'}\n• **Size:** ${latestBackup.sizeMb} MB\n• **Time:** <t:${Math.floor(new Date(latestBackup.timestamp).getTime() / 1000)}:R>${latestBackup.downloadUrl ? `\n• **Download:** [Click Here](${latestBackup.downloadUrl})` : ''}`
             : '• **Status:** No backups performed yet.',
           inline: false 
         }
@@ -182,7 +182,7 @@ export const backupBot = {
         const record = await backupHandler.runBackup();
         if (record.success) {
           await interaction.followUp({
-            content: `✅ **Backup Successful!**\n• File: \`${record.fileName}\`\n• Size: ${record.sizeMb} MB\n• Elapsed Time: ${record.durationSeconds}s`,
+            content: `✅ **Backup Successful!**\n• File: \`${record.fileName}\`\n• Size: ${record.sizeMb} MB\n• Elapsed Time: ${record.durationSeconds}s${record.downloadUrl ? `\n• Download: [Click Here](${record.downloadUrl})` : ''}`,
             ephemeral: true
           });
           // Update the dashboard message if possible

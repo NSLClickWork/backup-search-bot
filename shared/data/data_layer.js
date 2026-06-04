@@ -1,5 +1,7 @@
 import { google } from 'googleapis';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -71,7 +73,7 @@ class DataLayer {
           serviceAccountEmail,
           null,
           formattedKey,
-          ['https://www.googleapis.com/auth/drive.readonly']
+          ['https://www.googleapis.com/auth/drive']
         );
         this.googleDrive = google.drive({ version: 'v3', auth: this.googleAuth });
         this.isGoogleConfigured = true;
@@ -292,6 +294,42 @@ class DataLayer {
     }
 
     return uniqueResults;
+  }
+
+  /**
+   * Uploads a file to Google Drive and returns the webViewLink
+   */
+  async uploadBackupToDrive(filePath, folderId) {
+    if (!this.isGoogleConfigured) {
+      throw new Error('Google Drive is not configured');
+    }
+
+    try {
+      console.log(`[DataLayer] Uploading ${filePath} to Google Drive folder ${folderId}...`);
+      const fileName = path.basename(filePath);
+      
+      const fileMetadata = {
+        name: fileName,
+        parents: [folderId]
+      };
+      
+      const media = {
+        mimeType: 'application/zip',
+        body: fs.createReadStream(filePath)
+      };
+
+      const response = await this.googleDrive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink'
+      });
+
+      console.log(`[DataLayer] File uploaded successfully. File ID: ${response.data.id}`);
+      return response.data.webViewLink;
+    } catch (err) {
+      console.error('[DataLayer] Failed to upload backup to Google Drive:', err.message);
+      throw err;
+    }
   }
 }
 
