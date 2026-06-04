@@ -12,6 +12,32 @@ import { dataLayer } from '../../../shared/data/data_layer.js';
 import { llmHelper } from '../../../shared/ai/llm_helper.js';
 import { backupHandler } from '../../../shared/utils/backup_handler.js';
 
+/**
+ * Helper to send long replies by splitting them into chunks to bypass Discord's 2000 character limit
+ */
+async function sendSplitReply(interaction, text) {
+  if (text.length <= 1950) {
+    return interaction.editReply(text);
+  }
+  const chunks = [];
+  let currentChunk = '';
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (currentChunk.length + line.length > 1950) {
+      if (currentChunk) chunks.push(currentChunk);
+      currentChunk = line + '\n';
+    } else {
+      currentChunk += line + '\n';
+    }
+  }
+  if (currentChunk.trim().length > 0) chunks.push(currentChunk);
+
+  await interaction.editReply(chunks[0]);
+  for (let i = 1; i < chunks.length; i++) {
+    await interaction.followUp({ content: chunks[i], ephemeral: interaction.ephemeral });
+  }
+}
+
 export const backupBot = {
   // Command registration schema
   commands: [
@@ -129,7 +155,7 @@ export const backupBot = {
         const keywords = await llmHelper.extractSearchKeywords(queryText);
         const files = await dataLayer.searchFiles(keywords);
         const answer = await llmHelper.generateRAGAnswer(queryText, files);
-        await interaction.editReply(answer);
+        await sendSplitReply(interaction, answer);
       } catch (err) {
         console.error('[BackupBot] Ask command error:', err);
         await interaction.editReply(`❌ Error executing search query: \`${err.message}\``);
@@ -251,7 +277,7 @@ export const backupBot = {
         const answer = await llmHelper.generateRAGAnswer(queryText, files);
 
         // 4. Return results securely to the user (ephemeral to keep channels clutter-free)
-        await interaction.editReply(answer);
+        await sendSplitReply(interaction, answer);
       } catch (err) {
         console.error('[BackupBot] Modal submit search failed:', err);
         await interaction.editReply(`❌ Search execution failed: \`${err.message}\``);
