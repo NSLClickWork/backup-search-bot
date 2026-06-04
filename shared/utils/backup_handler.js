@@ -3,15 +3,20 @@ import path from 'path';
 import archiver from 'archiver';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 import { dataLayer } from '../data/data_layer.js';
 
 dotenv.config();
 
 class BackupHandler {
   constructor() {
-    // Note: Since we are running inside blobs/ (one level deeper), we need to resolve paths correctly
-    this.sourceDir = process.env.BACKUP_SOURCE_DIR || path.resolve(process.cwd(), '..');
-    this.destDir = process.env.BACKUP_DEST_DIR || path.resolve(this.sourceDir, 'backups');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // Resolve the repository root: shared/utils/backup_handler.js -> ../../ -> backup_bot/
+    const repoRoot = path.resolve(__dirname, '../../');
+    this.sourceDir = process.env.BACKUP_SOURCE_DIR || repoRoot;
+    this.destDir = process.env.BACKUP_DEST_DIR || path.join(this.sourceDir, 'backups');
     this.historyFilePath = path.join(this.destDir, 'backup_history.json');
   }
 
