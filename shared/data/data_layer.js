@@ -304,13 +304,23 @@ class DataLayer {
       throw new Error('Google Drive is not configured');
     }
 
+    // Auto-sanitize the folder ID in case the user pasted the full URL or added parameters
+    let cleanFolderId = folderId.trim();
+    if (cleanFolderId.includes('?')) {
+      cleanFolderId = cleanFolderId.split('?')[0];
+    }
+    const idMatch = cleanFolderId.match(/([a-zA-Z0-9_-]{25,})/);
+    if (idMatch) {
+      cleanFolderId = idMatch[1];
+    }
+
     try {
-      console.log(`[DataLayer] Uploading ${filePath} to Google Drive folder ${folderId}...`);
+      console.log(`[DataLayer] Uploading ${filePath} to Google Drive folder ${cleanFolderId}...`);
       const fileName = path.basename(filePath);
       
       const fileMetadata = {
         name: fileName,
-        parents: [folderId]
+        parents: [cleanFolderId]
       };
       
       const media = {
