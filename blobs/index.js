@@ -4,7 +4,18 @@ import dotenv from 'dotenv';
 import { backupBot } from './src/modules/backup.js';
 import { backupHandler } from '../shared/utils/backup_handler.js';
 
+import http from 'http';
+
 dotenv.config();
+
+// Simple HTTP server to satisfy Railway's health checks
+const port = process.env.PORT || 8080;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('NSL Backup Bot is running');
+}).listen(port, () => {
+  console.log(`[HealthCheck] Dummy HTTP server listening on port ${port}`);
+});
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
