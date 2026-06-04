@@ -182,7 +182,7 @@ export const backupBot = {
         const record = await backupHandler.runBackup();
         if (record.success) {
           await interaction.followUp({
-            content: `✅ **Backup Successful!**\n• File: \`${record.fileName}\`\n• Size: ${record.sizeMb} MB\n• Elapsed Time: ${record.durationSeconds}s${record.downloadUrl ? `\n• Download: [Click Here](${record.downloadUrl})` : ''}`,
+            content: `✅ **Backup Successful!**\n• File: \`${record.fileName}\`\n• Size: ${record.sizeMb} MB\n• Elapsed Time: ${record.durationSeconds}s${record.downloadUrl ? `\n• Download: [Click Here](${record.downloadUrl})` : ''}${record.error ? `\n⚠️ **Drive Upload Warning:** ${record.error}` : ''}`,
             ephemeral: true
           });
           // Update the dashboard message if possible
