@@ -234,7 +234,11 @@ class DataLayer {
       const hits = response.data?.value?.[0]?.hitsContainers?.[0]?.hits || [];
       return hits.map(hit => {
         const resource = hit.resource;
-        const isFolder = !!resource.folder;
+        // MS Graph /search/query sometimes omits 'folder' facet and returns mimeType application/octet-stream with size 0
+        const isFolder = !!resource.folder || 
+                         (resource.file?.mimeType === 'application/octet-stream' && 
+                          resource.size === 0 && 
+                          (!resource.name || !resource.name.includes('.')));
         // Clean up the snippet if it contains HTML from Microsoft Graph
         let cleanSnippet = hit.summary ? hit.summary.replace(/<[^>]*>?/gm, '') : 'Found in Microsoft 365';
         
