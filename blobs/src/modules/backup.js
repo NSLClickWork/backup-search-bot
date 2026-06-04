@@ -13,17 +13,21 @@ import { llmHelper } from '../../../shared/ai/llm_helper.js';
 import { backupHandler } from '../../../shared/utils/backup_handler.js';
 
 /**
- * Helper to send long replies by splitting them into chunks to bypass Discord's 2000 character limit
+ * Helper to send long replies by splitting them into chunks to bypass Discord's 4096 character limit using Embeds
  */
 async function sendSplitReply(interaction, text) {
-  if (text.length <= 1950) {
-    return interaction.editReply(text);
+  const embedColor = 0x5865F2; // Discord Blurple
+  if (text.length <= 4096) {
+    const embed = new EmbedBuilder()
+      .setColor(embedColor)
+      .setDescription(text);
+    return interaction.editReply({ embeds: [embed] });
   }
   const chunks = [];
   let currentChunk = '';
   const lines = text.split('\n');
   for (const line of lines) {
-    if (currentChunk.length + line.length > 1950) {
+    if (currentChunk.length + line.length > 4000) {
       if (currentChunk) chunks.push(currentChunk);
       currentChunk = line + '\n';
     } else {
@@ -32,9 +36,12 @@ async function sendSplitReply(interaction, text) {
   }
   if (currentChunk.trim().length > 0) chunks.push(currentChunk);
 
-  await interaction.editReply(chunks[0]);
+  const firstEmbed = new EmbedBuilder().setColor(embedColor).setDescription(chunks[0]);
+  await interaction.editReply({ embeds: [firstEmbed] });
+  
   for (let i = 1; i < chunks.length; i++) {
-    await interaction.followUp({ content: chunks[i], ephemeral: interaction.ephemeral });
+    const nextEmbed = new EmbedBuilder().setColor(embedColor).setDescription(chunks[i]);
+    await interaction.followUp({ embeds: [nextEmbed], ephemeral: interaction.ephemeral });
   }
 }
 
