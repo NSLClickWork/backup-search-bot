@@ -151,7 +151,7 @@ Based on the file list below, answer the user's search query accurately, concise
 CRITICAL: You must answer in ENGLISH (since all system and user outputs of the bot must be in English).
 You MUST include a markdown link for each file found ([File Name](File Link)) and state whether it is in Google Drive or SharePoint.
 You MUST prefix each file name with its corresponding emoji (📂 for FOLDER, 📄 for FILE) as indicated in the SummaryContent.
-If the files do not directly answer the user query, list the most relevant files so they can inspect them.
+You MUST list ALL files provided in the 'Files found' list below. Do not omit or filter out any file.
 If there are more files than shown, mention that these are just the top results.
 
 Files found:
