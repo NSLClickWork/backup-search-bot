@@ -140,28 +140,35 @@ class LLMHelper {
     }
 
     try {
-      // Limit files to avoid Discord's 2000 character limit and excessive LLM token usage
+      // Limit files to avoid Discord's 2000 character limit
       const topFiles = files.slice(0, 10);
-      const context = topFiles.map((f, i) => 
-        `File ${i+1}: Name: "${f.name}", Source: "${f.source}", Link: "${f.webUrl}", LastModified: "${f.lastModified}", SummaryContent: "${f.snippet}"`
-      ).join('\n');
-
+      
       const systemPrompt = `You are a smart Backup & Search Bot for NSL Click & Work.
-Based on the file list below, answer the user's search query accurately, concisely, and with a clean layout.
+Your task is to provide a very brief 1-2 sentence response acknowledging the user's search query and stating that you found ${files.length} relevant files.
 CRITICAL: You must answer in ENGLISH (since all system and user outputs of the bot must be in English).
-You MUST include a markdown link for each file found ([File Name](File Link)) and state whether it is in Google Drive or SharePoint.
-You MUST prefix each file name with its corresponding emoji (📂 for FOLDER, 📄 for FILE) as indicated in the SummaryContent.
-You MUST list ALL files provided in the 'Files found' list below. Do not omit or filter out any file.
-If there are more files than shown, mention that these are just the top results.
+Do NOT list the files yourself. The system will automatically attach the file list below your response.
+Just write the introductory sentence.`;
 
-Files found:
-${context}`;
-
+      let llmResponse = '';
       if (this.isGroqConfigured) {
-        return await this.callGroqRAG(systemPrompt, queryText);
+        llmResponse = await this.callGroqRAG(systemPrompt, queryText);
       } else {
-        return await this.callOpenAIRAG(systemPrompt, queryText);
+        llmResponse = await this.callOpenAIRAG(systemPrompt, queryText);
       }
+      
+      // Programmatically format the file list to guarantee correct emojis and links
+      let fileListMarkdown = '\n\n';
+      topFiles.forEach((file) => {
+        const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
+        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        fileListMarkdown += `- ${typeEmoji} [${file.name}](${file.webUrl}) (${sourceEmoji})\n`;
+      });
+      
+      if (files.length > 10) {
+        fileListMarkdown += `\n*Showing top 10 results out of ${files.length}.*`;
+      }
+      
+      return llmResponse + fileListMarkdown;
     } catch (err) {
       console.error('[LLMHelper] RAG generation API failed, falling back to manual formatter:', err.message);
       // Fallback in English
