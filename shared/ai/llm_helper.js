@@ -121,11 +121,12 @@ class LLMHelper {
     }
 
     if (!this.isGroqConfigured && !this.isOpenAIConfigured) {
-      // Mock AI RAG response in English
+      // Limit files to avoid hitting Discord's 2000 character limit
+      const topFiles = files.slice(0, 10);
       let answer = `🔍 **[Mock AI] Search Results for:** "${queryText}"\n\n`;
-      answer += `I found **${files.length} relevant files**:\n\n`;
+      answer += `I found **${files.length} relevant files** (showing top ${topFiles.length}):\n\n`;
       
-      files.forEach((file, index) => {
+      topFiles.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
         const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
         answer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
@@ -139,7 +140,9 @@ class LLMHelper {
     }
 
     try {
-      const context = files.map((f, i) => 
+      // Limit files to avoid Discord's 2000 character limit and excessive LLM token usage
+      const topFiles = files.slice(0, 10);
+      const context = topFiles.map((f, i) => 
         `File ${i+1}: Name: "${f.name}", Source: "${f.source}", Link: "${f.webUrl}", LastModified: "${f.lastModified}", SummaryContent: "${f.snippet}"`
       ).join('\n');
 
@@ -149,6 +152,7 @@ CRITICAL: You must answer in ENGLISH (since all system and user outputs of the b
 You MUST include a markdown link for each file found ([File Name](File Link)) and state whether it is in Google Drive or SharePoint.
 You MUST prefix each file name with its corresponding emoji (📂 for FOLDER, 📄 for FILE) as indicated in the SummaryContent.
 If the files do not directly answer the user query, list the most relevant files so they can inspect them.
+If there are more files than shown, mention that these are just the top results.
 
 Files found:
 ${context}`;
@@ -162,7 +166,8 @@ ${context}`;
       console.error('[LLMHelper] RAG generation API failed, falling back to manual formatter:', err.message);
       // Fallback in English
       let fallbackAnswer = `⚠️ **Search Results (AI API Error - Listing Files):**\n\n`;
-      files.forEach((file, index) => {
+      const topFiles = files.slice(0, 10);
+      topFiles.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
         const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
         fallbackAnswer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
