@@ -127,7 +127,8 @@ class LLMHelper {
       
       files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
-        answer += `${index + 1}. **[${file.name}](${file.webUrl})**\n`;
+        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        answer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
         answer += `   - **Source:** ${sourceEmoji} | **Last Modified:** ${new Date(file.lastModified).toLocaleDateString('en-US')}\n`;
         answer += `   - **Path:** \`${file.path}\`\n`;
         answer += `   - **Content Summary:** *${file.snippet}*\n\n`;
@@ -146,6 +147,7 @@ class LLMHelper {
 Based on the file list below, answer the user's search query accurately, concisely, and with a clean layout.
 CRITICAL: You must answer in ENGLISH (since all system and user outputs of the bot must be in English).
 You MUST include a markdown link for each file found ([File Name](File Link)) and state whether it is in Google Drive or SharePoint.
+You MUST prefix each file name with its corresponding emoji (📂 for FOLDER, 📄 for FILE) as indicated in the SummaryContent.
 If the files do not directly answer the user query, list the most relevant files so they can inspect them.
 
 Files found:
@@ -162,7 +164,8 @@ ${context}`;
       let fallbackAnswer = `⚠️ **Search Results (AI API Error - Listing Files):**\n\n`;
       files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
-        fallbackAnswer += `${index + 1}. **[${file.name}](${file.webUrl})**\n`;
+        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        fallbackAnswer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
         fallbackAnswer += `   - **Source:** ${sourceEmoji} | **Path:** \`${file.path}\`\n`;
       });
       return fallbackAnswer;
