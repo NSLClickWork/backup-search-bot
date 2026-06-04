@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "NSL Bot - OPS Process (Payroll, Reminder, Backup & Search Bot)",
   "type": "module",
-  "main": "src/index.js",
+  "main": "blobs/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "test:datalayer": "node src/shared/dataLayer.test.js"
+    "start": "node blobs/index.js",
+    "test:datalayer": "node blobs/test_datalayer.js"
   },
   "dependencies": {
     "archiver": "^6.0.2",
