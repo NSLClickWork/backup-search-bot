@@ -160,12 +160,12 @@ class DataLayer {
 
     try {
       const escapedQuery = queryText.replace(/'/g, "\\'");
-      const lowerQuery = escapedQuery.toLowerCase();
-      const upperQuery = escapedQuery.toUpperCase();
-      const capQuery = escapedQuery.charAt(0).toUpperCase() + escapedQuery.slice(1).toLowerCase();
+      const words = escapedQuery.split(/\s+/).filter(w => w.length > 0);
+      const nameContainsFuzzy = words.map(w => `name contains '${w.toLowerCase()}'`).join(' and ');
+      const qString = `(name contains '${escapedQuery}' or (${nameContainsFuzzy}) or fullText contains '${escapedQuery}') and trashed = false`;
 
       const response = await this.googleDrive.files.list({
-        q: `(name contains '${escapedQuery}' or name contains '${lowerQuery}' or name contains '${upperQuery}' or name contains '${capQuery}' or fullText contains '${escapedQuery}') and trashed = false`,
+        q: qString,
         fields: 'files(id, name, mimeType, webViewLink, modifiedTime, description)',
         pageSize: 200
       });
@@ -212,6 +212,10 @@ class DataLayer {
     }
 
     try {
+      const words = queryText.split(/\s+/).filter(w => w.length > 0);
+      const fuzzyMsQuery = words.map(w => `${w}*`).join(' AND ');
+      const finalMsQuery = `"${queryText}" OR (${fuzzyMsQuery})`;
+
       // Use Microsoft Graph Search API to scan ALL documents across the tenant
       const url = 'https://graph.microsoft.com/v1.0/search/query';
       const body = {
@@ -219,7 +223,7 @@ class DataLayer {
           {
             entityTypes: ['driveItem'],
             query: {
-              queryString: queryText
+              queryString: finalMsQuery
             },
             sortProperties: [
               {
