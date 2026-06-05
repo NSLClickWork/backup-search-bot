@@ -177,23 +177,37 @@ export const backupBot = {
     const { customId } = interaction;
 
     if (customId === 'btn_run_backup_now') {
-      await interaction.reply({ content: '⚙️ Starting manual backup job. Please wait...', ephemeral: true });
-      try {
-        const record = await backupHandler.runBackup();
-        if (record.success) {
-          await interaction.followUp({
-            content: `✅ **Cloud Sync Successful!**\n• Type: \`${record.fileName}\`\n• Jobs: ${record.filePath}\n• Elapsed Time: ${record.durationSeconds}s${record.error ? `\n⚠️ **Sync Warning:**\n${record.error}` : ''}`,
-            ephemeral: true
-          });
-          // Update the dashboard message if possible
-          const payload = await this.getDashboardPayload();
-          await interaction.message.edit(payload);
-        } else {
-          await interaction.followUp({ content: `❌ **Backup Failed:** \`${record.error}\``, ephemeral: true });
+      await interaction.reply({ content: '⚙️ Manual backup job has been started in the background! Since syncing cloud data can take a long time, I will send you a direct message (DM) when it finishes. You can safely close this message.', ephemeral: true });
+      
+      // Run asynchronously so we don't block or timeout Discord's 15m interaction limit
+      backupHandler.runBackup().then(async (record) => {
+        try {
+            const user = await interaction.client.users.fetch(interaction.user.id);
+            if (record.success) {
+              await user.send(
+                `✅ **Cloud Sync Successful!**\n• Type: \`${record.fileName}\`\n• Jobs: ${record.filePath}\n• Elapsed Time: ${record.durationSeconds}s${record.error ? `\n⚠️ **Sync Warning:**\n${record.error}` : ''}`
+              );
+              // Try updating the dashboard message if it's still accessible
+              try {
+                const payload = await this.getDashboardPayload();
+                await interaction.message.edit(payload);
+              } catch (e) {
+                console.error("Could not update dashboard message:", e);
+              }
+            } else {
+              await user.send(`❌ **Backup Failed:** \`${record.error}\``);
+            }
+        } catch (dmErr) {
+            console.error("Failed to DM user after backup:", dmErr);
         }
-      } catch (err) {
-        await interaction.followUp({ content: `❌ **Critical Backup Error:** \`${err.message}\``, ephemeral: true });
-      }
+      }).catch(async (err) => {
+        try {
+            const user = await interaction.client.users.fetch(interaction.user.id);
+            await user.send(`❌ **Critical Backup Error:** \`${err.message}\``);
+        } catch (dmErr) {
+            console.error("Failed to DM user after critical backup error:", dmErr);
+        }
+      });
     }
 
     else if (customId === 'btn_view_history') {
