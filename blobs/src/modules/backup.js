@@ -78,14 +78,14 @@ export const backupBot = {
       .setDescription('Manage your company backups and search across Google Drive & Microsoft 365. Use the buttons below to interact without remembering slash commands.')
       .addFields(
         { 
-          name: '💾 Latest Backup Run', 
+          name: '☁️ Latest Cloud Sync', 
           value: latestBackup 
-            ? `• **File:** \`${latestBackup.fileName}\`\n• **Status:** ${latestBackup.success ? '✅ SUCCESS' : '❌ FAILED'}\n• **Size:** ${latestBackup.sizeMb} MB\n• **Time:** <t:${Math.floor(new Date(latestBackup.timestamp).getTime() / 1000)}:R>${latestBackup.downloadUrl ? `\n• **Download:** [Click Here](${latestBackup.downloadUrl})` : ''}`
+            ? `• **Type:** \`${latestBackup.fileName}\`\n• **Status:** ${latestBackup.success ? '✅ SUCCESS' : '❌ FAILED'}\n• **Jobs:** ${latestBackup.filePath}\n• **Time:** <t:${Math.floor(new Date(latestBackup.timestamp).getTime() / 1000)}:R>`
             : '• **Status:** No backups performed yet.',
           inline: false 
         }
       )
-      .setFooter({ text: 'NSL Bot System v3 • Designed for Blobs' })
+      .setFooter({ text: 'NSL Bot System • Designed by Blobs' })
       .setTimestamp();
 
     // Button layout
@@ -144,11 +144,11 @@ export const backupBot = {
       
       const embed = new EmbedBuilder()
         .setColor(lastBackup.success ? 0x00FF66 : 0xFF3333)
-        .setTitle(lastBackup.success ? '💾 Backup Status: Healthy' : '💾 Backup Status: Failed')
+        .setTitle(lastBackup.success ? '☁️ Sync Status: Healthy' : '☁️ Sync Status: Failed')
         .addFields(
-          { name: 'Backup File', value: `\`${lastBackup.fileName}\`` },
-          { name: 'Backup Size', value: `${lastBackup.sizeMb} MB`, inline: true },
-          { name: 'Compression Time', value: `${lastBackup.durationSeconds}s`, inline: true },
+          { name: 'Sync Type', value: `\`${lastBackup.fileName}\`` },
+          { name: 'Details', value: `${lastBackup.filePath}`, inline: true },
+          { name: 'Sync Time', value: `${lastBackup.durationSeconds}s`, inline: true },
           { name: 'Timestamp', value: `<t:${Math.floor(new Date(lastBackup.timestamp).getTime() / 1000)}:F>`, inline: false }
         );
 
@@ -182,7 +182,7 @@ export const backupBot = {
         const record = await backupHandler.runBackup();
         if (record.success) {
           await interaction.followUp({
-            content: `✅ **Backup Successful!**\n• File: \`${record.fileName}\`\n• Size: ${record.sizeMb} MB\n• Elapsed Time: ${record.durationSeconds}s${record.downloadUrl ? `\n• Download: [Click Here](${record.downloadUrl})` : ''}${record.error ? `\n⚠️ **Drive Upload Warning:** ${record.error}` : ''}`,
+            content: `✅ **Cloud Sync Successful!**\n• Type: \`${record.fileName}\`\n• Jobs: ${record.filePath}\n• Elapsed Time: ${record.durationSeconds}s${record.error ? `\n⚠️ **Sync Warning:**\n${record.error}` : ''}`,
             ephemeral: true
           });
           // Update the dashboard message if possible
@@ -205,7 +205,7 @@ export const backupBot = {
 
       let historyText = '';
       history.slice(0, 5).forEach((h, i) => {
-        historyText += `${i + 1}. **${h.fileName}**\n   - Status: ${h.success ? '✅ SUCCESS' : '❌ FAILED'}\n   - Size: ${h.sizeMb} MB | Time: ${h.durationSeconds}s | Date: <t:${Math.floor(new Date(h.timestamp).getTime() / 1000)}:d>\n\n`;
+        historyText += `${i + 1}. **${h.fileName}**\n   - Status: ${h.success ? '✅ SUCCESS' : '❌ FAILED'}\n   - Jobs: ${h.filePath} | Time: ${h.durationSeconds}s | Date: <t:${Math.floor(new Date(h.timestamp).getTime() / 1000)}:d>\n\n`;
       });
 
       const embed = new EmbedBuilder()
@@ -238,7 +238,7 @@ export const backupBot = {
       await interaction.reply({
         content: `🔍 **NSL Backup & Search Bot Help Guide**\n\n` +
                  `• **Search Files**: Click the primary blue "Search Files" button to trigger a popup form. Enter your query (e.g. "Visa Khoi" or "Hợp đồng") and submit. The AI will pull matching documents from Google Drive and OneDrive, merging them and providing an answer with direct links.\n` +
-                 `• **Run Backup**: Zips the parent workspace directory, excluding \`node_modules\`, \`.git\`, and the \`backups\` folder to keep backup sizes clean.\n` +
+                 `• **Run Backup**: Performs a Cloud-to-Cloud sync using rclone to securely backup company data directly to Google Drive 2TB without consuming bot storage.\n` +
                  `• **Automation**: Backups run automatically every night at 02:00 AM UTC (\`0 2 * * *\`).`,
         ephemeral: true
       });

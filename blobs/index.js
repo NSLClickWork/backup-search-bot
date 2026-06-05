@@ -23,7 +23,7 @@ const guildId = process.env.DISCORD_GUILD_ID;
 const cronSchedule = process.env.BACKUP_CRON_SCHEDULE || '0 2 * * *'; // Default 2:00 AM UTC
 
 console.log('==================================================');
-console.log('       NSL BOT SYSTEM v3 - BLOBS PROCESS          ');
+console.log('       NSL BOT SYSTEM - BLOBS PROCESS          ');
 console.log('==================================================');
 
 // 1. Cron Scheduler Setup (Always runs in UTC as per project standard)

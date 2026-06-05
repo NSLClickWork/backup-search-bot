@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import archiver from 'archiver';
+import { spawn } from 'child_process';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -13,191 +13,138 @@ class BackupHandler {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     
-    // Resolve the repository root: shared/utils/backup_handler.js -> ../../ -> backup_bot/
     const repoRoot = path.resolve(__dirname, '../../');
     this.sourceDir = process.env.BACKUP_SOURCE_DIR || repoRoot;
     this.destDir = process.env.BACKUP_DEST_DIR || path.join(this.sourceDir, 'backups');
     this.historyFilePath = path.join(this.destDir, 'backup_history.json');
   }
 
-  /**
-   * Fetch Airtable base data and dump to a local JSON file for backup inclusion
-   */
-  async backupAirtable() {
-    const apiKey = process.env.AIRTABLE_API_KEY;
-    const baseId = process.env.AIRTABLE_BASE_ID;
-    const tableName = process.env.AIRTABLE_TABLE_NAME;
-    const targetFile = path.join(this.sourceDir, 'airtable_backup.json');
+  async runRcloneCmd(cmdArgs) {
+    return new Promise((resolve, reject) => {
+      const child = spawn('rclone', cmdArgs);
+      let errorLog = '';
 
-    const isAirtableConfigured = apiKey && apiKey !== 'placeholder_airtable_key' &&
-                                 baseId && baseId !== 'placeholder_airtable_base' &&
-                                 tableName && tableName !== 'placeholder_airtable_table';
-
-    if (!isAirtableConfigured) {
-      console.warn('[BackupHandler] Airtable credentials missing. Generating Mock Airtable Backup File...');
-      const mockAirtableData = {
-        backupTimestamp: new Date().toISOString(),
-        isMockData: true,
-        tables: {
-          Tasks: [
-            { id: 'rec1', fields: { Task_Name: 'Review payroll hours', Status: 'Completed', Assignee: 'Sharkie' } },
-            { id: 'rec2', fields: { Task_Name: 'Port reminder bot to Discord', Status: 'In Progress', Assignee: 'KhoiNguyen' } },
-            { id: 'rec3', fields: { Task_Name: 'Configure SharePoint backup', Status: 'Todo', Assignee: 'Blobs' } }
-          ],
-          Payroll: [
-            { id: 'rec4', fields: { Employee_Name: 'Sharkie', Monthly_Rate: 15.00, Hours_Worked: 160 } },
-            { id: 'rec5', fields: { Employee_Name: 'Blobs', Monthly_Rate: 15.00, Hours_Worked: 155 } }
-          ]
-        }
-      };
-      fs.writeFileSync(targetFile, JSON.stringify(mockAirtableData, null, 2), 'utf8');
-      console.log(`[BackupHandler] Mock Airtable data written to "${targetFile}"`);
-      return { success: true, isMock: true };
-    }
-
-    console.log(`[BackupHandler] Fetching Airtable data from base "${baseId}", table "${tableName}"...`);
-    try {
-      const response = await axios.get(`https://api.airtable.com/v0/${baseId}/${tableName}`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`
-        }
+      child.stdout.on('data', (data) => {
+        console.log(`[rclone] ${data.toString().trim()}`);
       });
 
-      const airtableData = {
-        backupTimestamp: new Date().toISOString(),
-        isMockData: false,
-        records: response.data.records
-      };
+      child.stderr.on('data', (data) => {
+        const str = data.toString().trim();
+        console.error(`[rclone log] ${str}`);
+        errorLog += str + '\n';
+      });
 
-      fs.writeFileSync(targetFile, JSON.stringify(airtableData, null, 2), 'utf8');
-      console.log(`[BackupHandler] Airtable backup saved to "${targetFile}"`);
-      return { success: true, isMock: false };
-    } catch (err) {
-      console.error('[BackupHandler] Airtable backup API call failed:', err.response?.data || err.message);
-      // Fail gracefully, write error details but don't block the file backup
-      fs.writeFileSync(targetFile, JSON.stringify({
-        backupTimestamp: new Date().toISOString(),
-        success: false,
-        error: err.message
-      }, null, 2), 'utf8');
-      return { success: false, error: err.message };
-    }
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve(true);
+        } else {
+          reject(new Error(`rclone exited with code ${code}. Last logs: ${errorLog.slice(-500)}`));
+        }
+      });
+      
+      child.on('error', (err) => {
+        reject(new Error(`Failed to start rclone process: ${err.message}`));
+      });
+    });
   }
 
   /**
-   * Runs backup process: zips source directory and writes log records
+   * Runs backup process: Executes rclone cloud-to-cloud sync
    */
   async runBackup() {
-    console.log(`[BackupHandler] Starting backup from "${this.sourceDir}" to "${this.destDir}"...`);
-    
-    // 1. Backup Airtable data first so it gets included in the zip archive
-    try {
-      await this.backupAirtable();
-    } catch (err) {
-      console.error('[BackupHandler] Pre-backup Airtable hook failed:', err.message);
-    }
-
+    console.log(`[BackupHandler] Starting Cloud-to-Cloud Backup via rclone...`);
     const startTime = new Date();
     
-    // Ensure destination directory exists
+    // Ensure destination directory exists for config and history
     if (!fs.existsSync(this.destDir)) {
       fs.mkdirSync(this.destDir, { recursive: true });
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const zipName = `backup_${timestamp}.zip`;
-    const zipPath = path.join(this.destDir, zipName);
+    // 1. Setup Config
+    const rcloneConfigData = process.env.RCLONE_CONFIG_DATA;
+    if (!rcloneConfigData || rcloneConfigData === 'placeholder_config') {
+      const errMessage = 'RCLONE_CONFIG_DATA environment variable is missing. Cannot perform cloud-to-cloud backup.';
+      console.error('[BackupHandler]', errMessage);
+      return { success: false, error: errMessage };
+    }
+    
+    const configPath = path.join(this.destDir, 'rclone.conf');
+    fs.writeFileSync(configPath, rcloneConfigData, 'utf8');
 
-    return new Promise((resolve, reject) => {
-      const output = fs.createWriteStream(zipPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
+    // 2. Load Sync Jobs from ENV
+    const jobs = [];
+    for (let i = 1; i <= 5; i++) {
+      const source = process.env[`RCLONE_SYNC_SOURCE_${i}`];
+      const dest = process.env[`RCLONE_SYNC_DEST_${i}`];
+      if (source && dest && source !== 'placeholder' && dest !== 'placeholder') {
+        jobs.push({ source, dest, name: `Sync Job ${i}` });
+      }
+    }
 
-      output.on('close', async () => {
-        const stats = fs.statSync(zipPath);
-        const durationSec = ((new Date() - startTime) / 1000).toFixed(2);
-        const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
+    if (jobs.length === 0) {
+      const errMessage = 'No sync jobs configured. Please set RCLONE_SYNC_SOURCE_1 and RCLONE_SYNC_DEST_1 in your .env / Railway variables.';
+      console.error('[BackupHandler]', errMessage);
+      fs.unlinkSync(configPath);
+      return { success: false, error: errMessage };
+    }
 
-        console.log(`[BackupHandler] Backup completed. File: ${zipName} (${sizeMb} MB) in ${durationSec}s`);
-        
-        const backupRecord = {
-          success: true,
-          fileName: zipName,
-          filePath: zipPath,
-          sizeMb: parseFloat(sizeMb),
-          durationSeconds: parseFloat(durationSec),
-          timestamp: startTime.toISOString(),
-          error: null,
-          downloadUrl: null
-        };
+    const timestampStr = startTime.toISOString().replace(/[:.]/g, '-');
+    let totalLogs = '';
+    let hasError = false;
 
-        const folderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
-        if (folderId && folderId !== 'placeholder_folder_id') {
-          try {
-            console.log(`[BackupHandler] Uploading zip to Google Drive...`);
-            const driveUrl = await dataLayer.uploadBackupToDrive(zipPath, folderId);
-            backupRecord.downloadUrl = driveUrl;
-            
-            // Delete local zip to save space
-            if (fs.existsSync(zipPath)) {
-              fs.unlinkSync(zipPath);
-              console.log(`[BackupHandler] Deleted local zip file to save space: ${zipPath}`);
-            }
-          } catch (uploadErr) {
-            console.error('[BackupHandler] Failed to upload to Google Drive:', uploadErr.message);
-            backupRecord.error = `Local backup success, but Drive upload failed: ${uploadErr.message}`;
-          }
-        }
-
-        await this.saveHistory(backupRecord);
-        resolve(backupRecord);
-      });
-
-      archive.on('error', async (err) => {
-        console.error('[BackupHandler] Archive compression error:', err.message);
-        
-        const backupRecord = {
-          success: false,
-          fileName: zipName,
-          filePath: zipPath,
-          sizeMb: 0,
-          durationSeconds: ((new Date() - startTime) / 1000).toFixed(2),
-          timestamp: startTime.toISOString(),
-          error: err.message
-        };
-
-        await this.saveHistory(backupRecord);
-        
-        if (fs.existsSync(zipPath)) {
-          try { fs.unlinkSync(zipPath); } catch (e) {}
-        }
-        
-        reject(err);
-      });
-
-      archive.pipe(output);
-
-      const backupsFolderBase = path.basename(this.destDir);
+    // 3. Execute Jobs
+    for (const job of jobs) {
+      console.log(`[BackupHandler] Executing ${job.name}: ${job.source} -> ${job.dest}`);
       
-      // Filter entries to prevent infinite recursion
-      fs.readdirSync(this.sourceDir).forEach(file => {
-        const fullPath = path.join(this.sourceDir, file);
-        const isDir = fs.statSync(fullPath).isDirectory();
+      // Determine --backup-dir automatically
+      let backupDirArgs = [];
+      if (job.dest.includes(':')) {
+        const parts = job.dest.split(':');
+        const remote = parts[0];
+        const destPath = parts.slice(1).join(':');
+        const archivePath = destPath.endsWith('/') ? `${destPath.slice(0, -1)}_archive/${timestampStr}` : `${destPath}_archive/${timestampStr}`;
+        backupDirArgs = ['--backup-dir', `${remote}:${archivePath}`];
+      }
 
-        if (isDir) {
-          // Exclude backups, node_modules, and git directories
-          if (file !== backupsFolderBase && file !== 'node_modules' && file !== '.git') {
-            archive.directory(fullPath, file);
-          }
-        } else {
-          // Exclude direct zip files in source root
-          if (!file.endsWith('.zip')) {
-            archive.file(fullPath, { name: file });
-          }
-        }
-      });
+      const cmdArgs = [
+        'sync',
+        job.source,
+        job.dest,
+        ...backupDirArgs,
+        '--config', configPath,
+        '--drive-server-side-across-configs',
+        '--stats', '30s'
+      ];
 
-      archive.finalize();
-    });
+      try {
+        await this.runRcloneCmd(cmdArgs);
+        console.log(`[BackupHandler] ${job.name} success.`);
+        totalLogs += `[${job.name}] SUCCESS\n`;
+      } catch (err) {
+        console.error(`[BackupHandler] ${job.name} failed:`, err.message);
+        hasError = true;
+        totalLogs += `[${job.name}] FAILED: ${err.message}\n`;
+      }
+    }
+
+    // Cleanup config file for security
+    try { fs.unlinkSync(configPath); } catch (e) {}
+
+    const durationSec = ((new Date() - startTime) / 1000).toFixed(2);
+    
+    const backupRecord = {
+      success: !hasError,
+      fileName: 'Cloud-to-Cloud Sync',
+      filePath: `${jobs.length} Jobs Executed`,
+      sizeMb: 0, 
+      durationSeconds: parseFloat(durationSec),
+      timestamp: startTime.toISOString(),
+      error: hasError ? totalLogs : null,
+      downloadUrl: null
+    };
+
+    await this.saveHistory(backupRecord);
+    return backupRecord;
   }
 
   /**
