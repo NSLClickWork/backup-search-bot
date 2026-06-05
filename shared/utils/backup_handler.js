@@ -21,7 +21,8 @@ class BackupHandler {
 
   async runRcloneCmd(cmdArgs) {
     return new Promise((resolve, reject) => {
-      const child = spawn('rclone', cmdArgs);
+      const rclonePath = fs.existsSync('./rclone') ? './rclone' : 'rclone';
+      const child = spawn(rclonePath, cmdArgs);
       let errorLog = '';
 
       child.stdout.on('data', (data) => {
