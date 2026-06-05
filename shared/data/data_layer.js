@@ -167,7 +167,7 @@ class DataLayer {
       const response = await this.googleDrive.files.list({
         q: `(name contains '${escapedQuery}' or name contains '${lowerQuery}' or name contains '${upperQuery}' or name contains '${capQuery}' or fullText contains '${escapedQuery}') and trashed = false`,
         fields: 'files(id, name, mimeType, webViewLink, modifiedTime, description)',
-        pageSize: 15
+        pageSize: 100
       });
 
       return (response.data.files || []).map(file => ({

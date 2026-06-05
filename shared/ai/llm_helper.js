@@ -121,12 +121,10 @@ class LLMHelper {
     }
 
     if (!this.isGroqConfigured && !this.isOpenAIConfigured) {
-      // Limit files to avoid hitting Discord's 2000 character limit
-      const topFiles = files.slice(0, 10);
       let answer = `🔍 **[Mock AI] Search Results for:** "${queryText}"\n\n`;
-      answer += `I found **${files.length} relevant files** (showing top ${topFiles.length}):\n\n`;
+      answer += `I found **${files.length} relevant files**:\n\n`;
       
-      topFiles.forEach((file, index) => {
+      files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
         const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
         answer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
@@ -140,8 +138,7 @@ class LLMHelper {
     }
 
     try {
-      // Limit files to avoid Discord's 2000 character limit
-      const topFiles = files.slice(0, 10);
+      const topFiles = files;
       
       const systemPrompt = `You are a smart Backup & Search Bot for NSL Click & Work.
 Your task is to provide a very brief 1-2 sentence response acknowledging the user's search query and stating that you found ${files.length} relevant files.
@@ -164,17 +161,12 @@ Just write the introductory sentence.`;
         fileListMarkdown += `- ${typeEmoji} [${file.name}](${file.webUrl}) (${sourceEmoji})\n`;
       });
       
-      if (files.length > 10) {
-        fileListMarkdown += `\n*Showing top 10 results out of ${files.length}.*`;
-      }
-      
       return llmResponse + fileListMarkdown;
     } catch (err) {
       console.error('[LLMHelper] RAG generation API failed, falling back to manual formatter:', err.message);
       // Fallback in English
       let fallbackAnswer = `⚠️ **Search Results (AI API Error - Listing Files):**\n\n`;
-      const topFiles = files.slice(0, 10);
-      topFiles.forEach((file, index) => {
+      files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
         const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
         fallbackAnswer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
