@@ -167,7 +167,7 @@ class DataLayer {
       const response = await this.googleDrive.files.list({
         q: `(name contains '${escapedQuery}' or name contains '${lowerQuery}' or name contains '${upperQuery}' or name contains '${capQuery}' or fullText contains '${escapedQuery}') and trashed = false`,
         fields: 'files(id, name, mimeType, webViewLink, modifiedTime, description)',
-        pageSize: 100
+        pageSize: 200
       });
 
       return (response.data.files || []).map(file => ({
@@ -219,10 +219,16 @@ class DataLayer {
           {
             entityTypes: ['driveItem'],
             query: {
-              queryString: `${queryText} OR name:*${queryText}*`
+              queryString: queryText
             },
-            size: 100,
-            region: 'DEU' // The tenant's region is DEU
+            sortProperties: [
+              {
+                name: 'lastModifiedDateTime',
+                isDescending: true
+              }
+            ],
+            size: 200,
+            region: 'DEU'
           }
         ]
       };
