@@ -5,7 +5,7 @@
   "type": "module",
   "main": "blobs/index.js",
   "scripts": {
-    "prestart": "bash ./install_rclone.sh",
+    "prestart": "node ./install_rclone.js",
     "start": "node blobs/index.js",
     "test:datalayer": "node blobs/test_datalayer.js"
   },
@@ -14,6 +14,7 @@
     "axios": "^1.7.2",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
+    "extract-zip": "^2.0.1",
     "googleapis": "^137.1.0",
     "node-cron": "^3.0.3",
     "xlsx": "^0.18.5"
