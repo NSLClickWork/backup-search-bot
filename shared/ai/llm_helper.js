@@ -44,7 +44,7 @@ class LLMHelper {
     
     const ext = extMatch[1].toLowerCase();
     
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'tif', 'tiff', 'svg', 'bmp'].includes(ext)) return '🖼️';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'tif', 'tiff', 'svg', 'bmp', 'psd', 'ai', 'eps'].includes(ext)) return '🖼️';
     if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv'].includes(ext)) return '🎥';
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) return '🎵';
     if (['pdf'].includes(ext)) return '📕';

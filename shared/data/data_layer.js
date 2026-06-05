@@ -219,7 +219,7 @@ class DataLayer {
           {
             entityTypes: ['driveItem'],
             query: {
-              queryString: queryText
+              queryString: `${queryText} OR name:*${queryText}*`
             },
             size: 100,
             region: 'DEU' // The tenant's region is DEU
