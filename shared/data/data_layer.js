@@ -221,6 +221,7 @@ class DataLayer {
             query: {
               queryString: queryText
             },
+            size: 100,
             region: 'DEU' // The tenant's region is DEU
           }
         ]
