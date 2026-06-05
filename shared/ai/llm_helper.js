@@ -34,6 +34,30 @@ class LLMHelper {
   }
 
   /**
+   * Returns a specific emoji based on file extension
+   */
+  getFileEmoji(fileName, snippet) {
+    if (snippet && snippet.includes('FOLDER')) return '📁';
+    
+    const extMatch = fileName.match(/\.([^.]+)$/);
+    if (!extMatch) return '📄';
+    
+    const ext = extMatch[1].toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'tif', 'tiff', 'svg', 'bmp'].includes(ext)) return '🖼️';
+    if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv'].includes(ext)) return '🎥';
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) return '🎵';
+    if (['pdf'].includes(ext)) return '📕';
+    if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(ext)) return '📘';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return '📗';
+    if (['ppt', 'pptx'].includes(ext)) return '📙';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦';
+    if (['js', 'ts', 'html', 'css', 'json', 'py', 'java'].includes(ext)) return '💻';
+    
+    return '📄';
+  }
+
+  /**
    * Extracts search keywords from natural language queries
    */
   async extractSearchKeywords(queryText) {
@@ -126,7 +150,7 @@ class LLMHelper {
       
       files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
-        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        const typeEmoji = this.getFileEmoji(file.name, file.snippet);
         answer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
         answer += `   - **Source:** ${sourceEmoji} | **Last Modified:** ${new Date(file.lastModified).toLocaleDateString('en-US')}\n`;
         answer += `   - **Path:** \`${file.path}\`\n`;
@@ -157,7 +181,7 @@ Just write the introductory sentence.`;
       let fileListMarkdown = '\n\n';
       topFiles.forEach((file) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
-        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        const typeEmoji = this.getFileEmoji(file.name, file.snippet);
         fileListMarkdown += `- ${typeEmoji} [${file.name}](${file.webUrl}) (${sourceEmoji})\n`;
       });
       
@@ -168,7 +192,7 @@ Just write the introductory sentence.`;
       let fallbackAnswer = `⚠️ **Search Results (AI API Error - Listing Files):**\n\n`;
       files.forEach((file, index) => {
         const sourceEmoji = file.source === 'GoogleDrive' ? '🟢 Google Drive' : '🔵 SharePoint';
-        const typeEmoji = file.snippet.includes('FOLDER') ? '📂' : '📄';
+        const typeEmoji = this.getFileEmoji(file.name, file.snippet);
         fallbackAnswer += `${index + 1}. ${typeEmoji} **[${file.name}](${file.webUrl})**\n`;
         fallbackAnswer += `   - **Source:** ${sourceEmoji} | **Path:** \`${file.path}\`\n`;
       });
