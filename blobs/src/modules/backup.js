@@ -6,7 +6,8 @@ import {
   ButtonStyle, 
   ModalBuilder, 
   TextInputBuilder, 
-  TextInputStyle 
+  TextInputStyle,
+  AttachmentBuilder
 } from 'discord.js';
 import { dataLayer } from '../../../shared/data/data_layer.js';
 import { llmHelper } from '../../../shared/ai/llm_helper.js';
@@ -163,6 +164,13 @@ export const backupBot = {
         const files = await dataLayer.searchFiles(keywords);
         const answer = await llmHelper.generateRAGAnswer(queryText, files);
         await sendSplitReply(interaction, answer);
+        
+        if (files && files.length > 10) {
+          const fileContent = files.map((f, i) => `${i + 1}. [${f.source === 'GoogleDrive' ? 'Google Drive' : 'SharePoint'}] ${f.name}\n   Path: ${f.path}\n   URL: ${f.webUrl}`).join('\n\n');
+          const buffer = Buffer.from(`Full Search Results for: "${queryText}"\nTotal Found: ${files.length}\n\n${fileContent}`, 'utf-8');
+          const attachment = new AttachmentBuilder(buffer, { name: 'Full_Search_Results.txt' });
+          await interaction.followUp({ content: '📄 *Attached is the complete list of all search results.*', files: [attachment], ephemeral: true });
+        }
       } catch (err) {
         console.error('[BackupBot] Ask command error:', err);
         await interaction.editReply(`❌ Error executing search query: \`${err.message}\``);
@@ -299,6 +307,13 @@ export const backupBot = {
 
         // 4. Return results securely to the user (ephemeral to keep channels clutter-free)
         await sendSplitReply(interaction, answer);
+        
+        if (files && files.length > 10) {
+          const fileContent = files.map((f, i) => `${i + 1}. [${f.source === 'GoogleDrive' ? 'Google Drive' : 'SharePoint'}] ${f.name}\n   Path: ${f.path}\n   URL: ${f.webUrl}`).join('\n\n');
+          const buffer = Buffer.from(`Full Search Results for: "${queryText}"\nTotal Found: ${files.length}\n\n${fileContent}`, 'utf-8');
+          const attachment = new AttachmentBuilder(buffer, { name: 'Full_Search_Results.txt' });
+          await interaction.followUp({ content: '📄 *Attached is the complete list of all search results.*', files: [attachment], ephemeral: true });
+        }
       } catch (err) {
         console.error('[BackupBot] Modal submit search failed:', err);
         await interaction.editReply(`❌ Search execution failed: \`${err.message}\``);
