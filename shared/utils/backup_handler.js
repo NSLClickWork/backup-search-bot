@@ -77,8 +77,9 @@ class BackupHandler {
     for (let i = 1; i <= 5; i++) {
       const source = process.env[`RCLONE_SYNC_SOURCE_${i}`];
       const dest = process.env[`RCLONE_SYNC_DEST_${i}`];
+      const mode = process.env[`RCLONE_JOB_MODE_${i}`] || 'sync';
       if (source && dest && source !== 'placeholder' && dest !== 'placeholder') {
-        jobs.push({ source, dest, name: `Sync Job ${i}` });
+        jobs.push({ source, dest, mode, name: `Sync Job ${i} (${mode.toUpperCase()})` });
       }
     }
 
@@ -108,7 +109,7 @@ class BackupHandler {
       }
 
       const cmdArgs = [
-        'sync',
+        job.mode,
         job.source,
         job.dest,
         ...backupDirArgs,
