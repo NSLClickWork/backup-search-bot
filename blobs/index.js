@@ -20,7 +20,7 @@ http.createServer((req, res) => {
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
 const guildId = process.env.DISCORD_GUILD_ID;
-const cronSchedule = process.env.BACKUP_CRON_SCHEDULE || '0 2 * * *'; // Default 2:00 AM UTC
+const cronSchedule = process.env.BACKUP_CRON_SCHEDULE || '0 20 * * 0'; // Default 20:00 UTC Sunday (3:00 AM VN Time Monday)
 
 console.log('==================================================');
 console.log('       NSL BOT SYSTEM - BLOBS PROCESS          ');

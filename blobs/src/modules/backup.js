@@ -254,7 +254,7 @@ export const backupBot = {
         content: `🔍 **NSL Backup & Search Bot Help Guide**\n\n` +
                  `• **Search Files**: Click the primary blue "Search Files" button to trigger a popup form. Enter your query (e.g. "Visa Khoi" or "Hợp đồng") and submit. The AI will pull matching documents from Google Drive and OneDrive, merging them and providing an answer with direct links.\n` +
                  `• **Run Backup**: Performs a Cloud-to-Cloud sync using rclone to securely backup company data directly to Google Drive 2TB without consuming bot storage.\n` +
-                 `• **Automation**: Backups run automatically every night at 02:00 AM UTC (\`0 2 * * *\`).`,
+                 `• **Automation**: Backups run automatically every Monday at 3:00 AM VN Time (\`0 20 * * 0\` UTC).`,
         ephemeral: true
       });
     }
