@@ -119,7 +119,7 @@ class BackupHandler {
         '--transfers', '8',
         '--checkers', '16',
         '--drive-chunk-size', '64M',
-        '--fast-list'
+        '-v'
       ];
 
       try {
