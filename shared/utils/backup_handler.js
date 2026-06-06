@@ -114,6 +114,7 @@ class BackupHandler {
         ...backupDirArgs,
         '--config', configPath,
         '--drive-server-side-across-configs',
+        '--drive-skip-dangling-shortcuts',
         '--stats', '30s',
         '--tpslimit', '8',
         '--transfers', '8',
