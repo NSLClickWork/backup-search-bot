@@ -114,7 +114,12 @@ class BackupHandler {
         ...backupDirArgs,
         '--config', configPath,
         '--drive-server-side-across-configs',
-        '--stats', '30s'
+        '--stats', '30s',
+        '--tpslimit', '8',
+        '--transfers', '8',
+        '--checkers', '16',
+        '--drive-chunk-size', '64M',
+        '--fast-list'
       ];
 
       try {
