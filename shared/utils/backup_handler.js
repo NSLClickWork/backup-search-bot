@@ -73,18 +73,19 @@ class BackupHandler {
     fs.writeFileSync(configPath, rcloneConfigData, 'utf8');
 
     // 2. Load Sync Jobs from ENV
-    const jobs = [];
+    const allJobs = [];
     for (let i = 1; i <= 5; i++) {
       const source = process.env[`RCLONE_SYNC_SOURCE_${i}`];
       const dest = process.env[`RCLONE_SYNC_DEST_${i}`];
       const mode = process.env[`RCLONE_JOB_MODE_${i}`] || 'sync';
       if (source && dest && source !== 'placeholder' && dest !== 'placeholder') {
-        if (jobIds && !jobIds.includes(i)) continue;
-        jobs.push({ id: i, source, dest, mode, name: `Sync Job ${i} (${mode.toUpperCase()})` });
+        allJobs.push({ id: i, source, dest, mode, name: `Sync Job ${i} (${mode.toUpperCase()})` });
       }
     }
 
-    if (jobs.length === 0) {
+    const jobsToRun = jobIds ? allJobs.filter(j => jobIds.includes(j.id)) : allJobs;
+
+    if (jobsToRun.length === 0) {
       const errMessage = 'No sync jobs configured. Please set RCLONE_SYNC_SOURCE_1 and RCLONE_SYNC_DEST_1 in your .env / Railway variables.';
       console.error('[BackupHandler]', errMessage);
       fs.unlinkSync(configPath);
@@ -96,26 +97,30 @@ class BackupHandler {
     let hasError = false;
 
     // 3. Execute Jobs
-    for (const job of jobs) {
+    for (const job of jobsToRun) {
       console.log(`[BackupHandler] Executing ${job.name}: ${job.source} -> ${job.dest}`);
       
-      // Determine exclusions to prevent recursive backups
+      // Determine exclusions to prevent recursive backups (check all jobs)
       const excludeArgs = [];
-      const rootLevelDests = jobs
+      const rootLevelDests = allJobs
         .filter(j => j.source.endsWith(':') || j.source.endsWith(':/'))
         .map(j => {
           const parts = j.dest.split(':');
           return parts.length > 1 ? parts.slice(1).join(':') : j.dest;
         })
         .map(p => {
-          const cleanP = p.startsWith('/') ? p.substring(1) : p;
-          return cleanP.split('/')[0];
+          let cleanP = p.trim();
+          cleanP = cleanP.startsWith('/') ? cleanP.substring(1) : cleanP;
+          return cleanP.split('/')[0].trim();
         })
         .filter(ex => ex !== '' && ex !== '/');
       
       const uniqueExcludes = [...new Set(rootLevelDests)];
       for (const ex of uniqueExcludes) {
-        excludeArgs.push('--exclude', `/${ex}/**`);
+        if (ex) {
+          excludeArgs.push('--exclude', `/${ex}/**`);
+          excludeArgs.push('--exclude', `${ex}/**`);
+        }
       }
       excludeArgs.push('--exclude', `*_archive/**`);
 
@@ -154,8 +159,8 @@ class BackupHandler {
     const backupRecord = {
       success: !hasError,
       fileName: 'Cloud-to-Cloud Sync',
-      filePath: `${jobs.length} Jobs Executed`,
-      sizeMb: 0, 
+      filePath: `${jobsToRun.length} Jobs Executed`,
+      sizeMb: 0,  
       durationSeconds: parseFloat(durationSec),
       timestamp: startTime.toISOString(),
       error: hasError ? totalLogs : null,
