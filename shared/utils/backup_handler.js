@@ -107,7 +107,10 @@ class BackupHandler {
           const parts = j.dest.split(':');
           return parts.length > 1 ? parts.slice(1).join(':') : j.dest;
         })
-        .map(p => p.split('/')[0])
+        .map(p => {
+          const cleanP = p.startsWith('/') ? p.substring(1) : p;
+          return cleanP.split('/')[0];
+        })
         .filter(ex => ex !== '' && ex !== '/');
       
       const uniqueExcludes = [...new Set(rootLevelDests)];
