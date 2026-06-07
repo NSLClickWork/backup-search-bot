@@ -103,7 +103,7 @@ class BackupHandler {
       // Determine exclusions to prevent recursive backups (check all jobs)
       const excludeArgs = [];
       const rootLevelDests = allJobs
-        .filter(j => j.source.endsWith(':') || j.source.endsWith(':/'))
+        .filter(j => j.source.trim().endsWith(':') || j.source.trim().endsWith(':/'))
         .map(j => {
           const parts = j.dest.split(':');
           return parts.length > 1 ? parts.slice(1).join(':') : j.dest;
@@ -120,9 +120,15 @@ class BackupHandler {
         if (ex) {
           excludeArgs.push('--exclude', `/${ex}/**`);
           excludeArgs.push('--exclude', `${ex}/**`);
+          excludeArgs.push('--exclude', `*${ex}*/**`);
         }
       }
+      // Hardcode failsafes just in case env parsing fails
+      excludeArgs.push('--exclude', `*Backup_From_GoogleDrive*/**`);
+      excludeArgs.push('--exclude', `*Backup folder*/**`);
       excludeArgs.push('--exclude', `*_archive/**`);
+
+      console.log(`[BackupHandler] Exclude arguments:`, excludeArgs.join(' '));
 
       const cmdArgs = [
         job.mode,
