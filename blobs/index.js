@@ -20,23 +20,29 @@ http.createServer((req, res) => {
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
 const guildId = process.env.DISCORD_GUILD_ID;
-const cronSchedule = process.env.BACKUP_CRON_SCHEDULE || '0 20 * * 0'; // Default 20:00 UTC Sunday (3:00 AM VN Time Monday)
+const defaultCronSchedule = process.env.BACKUP_CRON_SCHEDULE || '0 20 * * 0'; // Default 20:00 UTC Sunday (3:00 AM VN Time Monday)
 
 console.log('==================================================');
 console.log('       NSL BOT SYSTEM - BLOBS PROCESS          ');
 console.log('==================================================');
 
-// 1. Cron Scheduler Setup (Always runs in UTC as per project standard)
-console.log(`[Scheduler] Setting up cron job with UTC expression: "${cronSchedule}"`);
-cron.schedule(cronSchedule, async () => {
-  console.log('[Scheduler] Triggering scheduled automatic backup...');
-  try {
-    const record = await backupHandler.runBackup();
-    console.log(`[Scheduler] Scheduled backup job completed. Success: ${record.success}`);
-  } catch (err) {
-    console.error('[Scheduler] Scheduled backup failed:', err.message);
+// 1. Cron Scheduler Setup (Multi-stream)
+for (let i = 1; i <= 5; i++) {
+  const source = process.env[`RCLONE_SYNC_SOURCE_${i}`];
+  if (source && source !== 'placeholder') {
+    const jobCron = process.env[`RCLONE_JOB_CRON_${i}`] || defaultCronSchedule;
+    console.log(`[Scheduler] Setting up cron for Job ${i} with expression: "${jobCron}"`);
+    cron.schedule(jobCron, async () => {
+      console.log(`[Scheduler] Triggering scheduled backup for Job ${i}...`);
+      try {
+        const record = await backupHandler.runBackup([i]);
+        console.log(`[Scheduler] Scheduled backup for Job ${i} completed. Success: ${record.success}`);
+      } catch (err) {
+        console.error(`[Scheduler] Scheduled backup for Job ${i} failed:`, err.message);
+      }
+    });
   }
-});
+}
 
 // 2. Validate Discord Credentials
 const isDiscordConfigured = token && token !== 'placeholder_token' && clientId && clientId !== 'placeholder_client_id';

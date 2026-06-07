@@ -52,7 +52,7 @@ class BackupHandler {
   /**
    * Runs backup process: Executes rclone cloud-to-cloud sync
    */
-  async runBackup() {
+  async runBackup(jobIds = null) {
     console.log(`[BackupHandler] Starting Cloud-to-Cloud Backup via rclone...`);
     const startTime = new Date();
     
@@ -79,7 +79,8 @@ class BackupHandler {
       const dest = process.env[`RCLONE_SYNC_DEST_${i}`];
       const mode = process.env[`RCLONE_JOB_MODE_${i}`] || 'sync';
       if (source && dest && source !== 'placeholder' && dest !== 'placeholder') {
-        jobs.push({ source, dest, mode, name: `Sync Job ${i} (${mode.toUpperCase()})` });
+        if (jobIds && !jobIds.includes(i)) continue;
+        jobs.push({ id: i, source, dest, mode, name: `Sync Job ${i} (${mode.toUpperCase()})` });
       }
     }
 
