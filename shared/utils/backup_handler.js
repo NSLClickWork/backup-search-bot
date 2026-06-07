@@ -99,21 +99,28 @@ class BackupHandler {
     for (const job of jobs) {
       console.log(`[BackupHandler] Executing ${job.name}: ${job.source} -> ${job.dest}`);
       
-      // Determine --backup-dir automatically
-      let backupDirArgs = [];
-      if (job.dest.includes(':')) {
-        const parts = job.dest.split(':');
-        const remote = parts[0];
-        const destPath = parts.slice(1).join(':');
-        const archivePath = destPath.endsWith('/') ? `${destPath.slice(0, -1)}_archive/${timestampStr}` : `${destPath}_archive/${timestampStr}`;
-        backupDirArgs = ['--backup-dir', `${remote}:${archivePath}`];
+      // Determine exclusions to prevent recursive backups
+      const excludeArgs = [];
+      const rootLevelDests = jobs
+        .filter(j => j.source.endsWith(':') || j.source.endsWith(':/'))
+        .map(j => {
+          const parts = j.dest.split(':');
+          return parts.length > 1 ? parts.slice(1).join(':') : j.dest;
+        })
+        .map(p => p.split('/')[0])
+        .filter(ex => ex !== '' && ex !== '/');
+      
+      const uniqueExcludes = [...new Set(rootLevelDests)];
+      for (const ex of uniqueExcludes) {
+        excludeArgs.push('--exclude', `/${ex}/**`);
       }
+      excludeArgs.push('--exclude', `*_archive/**`);
 
       const cmdArgs = [
         job.mode,
         job.source,
         job.dest,
-        ...backupDirArgs,
+        ...excludeArgs,
         '--config', configPath,
         '--drive-server-side-across-configs',
         '--drive-skip-dangling-shortcuts',
