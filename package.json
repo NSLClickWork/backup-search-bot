@@ -5,7 +5,6 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "prestart": "node ./install_rclone.js",
     "start": "node src/index.js",
     "test:datalayer": "node blobs/test_datalayer.js"
   },
