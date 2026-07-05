@@ -1,0 +1,82 @@
+import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
+import dotenv from 'dotenv';
+import { backupBot } from './src/modules/backup.js';
+import http from 'http';
+
+dotenv.config();
+
+// Simple HTTP server to satisfy Railway's health checks
+const port = process.env.PORT || 8080;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('NSL Backup Bot is running');
+}).listen(port, () => {
+  console.log(`[HealthCheck] Dummy HTTP server listening on port ${port}`);
+});
+
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.DISCORD_CLIENT_ID;
+const guildId = process.env.DISCORD_GUILD_ID;
+
+console.log('==================================================');
+console.log('       NSL BOT SYSTEM - SEARCH BOT             ');
+console.log('==================================================');
+// 2. Validate Discord Credentials
+const isDiscordConfigured = token && token !== 'placeholder_token' && clientId && clientId !== 'placeholder_client_id';
+
+if (!isDiscordConfigured) {
+  console.warn('⚠️  [Discord] Discord Token or Client ID is not configured (placeholder values found).');
+  console.warn('👉  Please fill in your real credentials in `blobs/.env` to run the Discord client.');
+  console.warn('👉  The background scheduler (cron job) will continue running normally.');
+  console.warn('👉  To test the search and backup modules offline, run: npm run test:datalayer');
+  console.log('==================================================');
+} else {
+  // Initialize Discord Client
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds
+    ]
+  });
+
+  // Slash commands registry
+  const registerSlashCommands = async () => {
+    try {
+      const rest = new REST({ version: '10' }).setToken(token);
+      const commandData = backupBot.commands.map(cmd => cmd.toJSON());
+
+      if (guildId && guildId !== 'placeholder_guild_id') {
+        console.log(`[Discord] Deploying guild-specific commands to server: ${guildId}`);
+        await rest.put(
+          Routes.applicationGuildCommands(clientId, guildId),
+          { body: commandData }
+        );
+      } else {
+        console.log('[Discord] Deploying global application commands...');
+        await rest.put(
+          Routes.applicationCommands(clientId),
+          { body: commandData }
+        );
+      }
+      console.log('[Discord] Slash commands registered successfully!');
+    } catch (err) {
+      console.error('[Discord] Failed to register slash commands:', err.message);
+    }
+  };
+
+  client.once('ready', async () => {
+    console.log(`✅ [Discord] Bot online! Logged in as: ${client.user.tag}`);
+    await registerSlashCommands();
+  });
+
+  client.on('interactionCreate', async (interaction) => {
+    try {
+      await backupBot.handleInteraction(interaction);
+    } catch (err) {
+      console.error('[Discord] Error routing interaction:', err);
+    }
+  });
+
+  client.login(token).catch(err => {
+    console.error('❌ [Discord] Login failed. Check your DISCORD_TOKEN in `blobs/.env`:', err.message);
+  });
+}

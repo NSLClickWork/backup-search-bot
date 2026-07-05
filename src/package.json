@@ -1,0 +1,20 @@
+{
+  "name": "nsl-bot-blobs",
+  "version": "1.0.0",
+  "description": "NSL Bot - Blobs Process (Backup & Search, Content Bot)",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test:datalayer": "node test_datalayer.js"
+  },
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "axios": "^1.7.2",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "googleapis": "^137.1.0",
+    "node-cron": "^3.0.3",
+    "pm2": "^7.0.1"
+  }
+}

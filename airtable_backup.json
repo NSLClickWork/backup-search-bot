@@ -1,0 +1,50 @@
+{
+  "backupTimestamp": "2026-06-04T15:17:28.951Z",
+  "isMockData": true,
+  "tables": {
+    "Tasks": [
+      {
+        "id": "rec1",
+        "fields": {
+          "Task_Name": "Review payroll hours",
+          "Status": "Completed",
+          "Assignee": "Sharkie"
+        }
+      },
+      {
+        "id": "rec2",
+        "fields": {
+          "Task_Name": "Port reminder bot to Discord",
+          "Status": "In Progress",
+          "Assignee": "KhoiNguyen"
+        }
+      },
+      {
+        "id": "rec3",
+        "fields": {
+          "Task_Name": "Configure SharePoint backup",
+          "Status": "Todo",
+          "Assignee": "Blobs"
+        }
+      }
+    ],
+    "Payroll": [
+      {
+        "id": "rec4",
+        "fields": {
+          "Employee_Name": "Sharkie",
+          "Monthly_Rate": 15,
+          "Hours_Worked": 160
+        }
+      },
+      {
+        "id": "rec5",
+        "fields": {
+          "Employee_Name": "Blobs",
+          "Monthly_Rate": 15,
+          "Hours_Worked": 155
+        }
+      }
+    ]
+  }
+}
