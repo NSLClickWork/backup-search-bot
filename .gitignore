@@ -15,3 +15,9 @@ backups/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+NSL_Bot_Plan_DualSource.docx
+NSL_Bot_Tracker.xlsx
+airtable_backup.json
+install_rclone.js
+read_xlsx.js
